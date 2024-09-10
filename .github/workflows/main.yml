@@ -8,71 +8,44 @@ on:
       - main
       - master
       - develop
-      - chat
 
 name: "Build & Release"
 
 jobs:
-  build-android:
-    name: Build & Release Android
+  build:
+    name: Build & Release
     runs-on: windows-latest
     steps:
+      # Checkout the repository
       - uses: actions/checkout@v3
+
+      # Set up Java JDK
       - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '12'
+
+      # Set up Flutter
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           architecture: x64
-      - run: flutter build apk --release --split-per-abi
-      - name: Upload Android APK
+
+      # Build the Android APK
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
+
+      # Upload APK as artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: android-apk
+          name: APKs
           path: build/app/outputs/apk/release/
 
-  build-ios:
-    name: Build & Release iOS
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          architecture: x64
-      - run: flutter build ios --release
-      - run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          cd ..
-          zip -r app.ipa Payload
-      - name: Upload iOS IPA
-        uses: actions/upload-artifact@v3
-        with:
-          name: ios-ipa
-          path: build/ios/iphoneos/app.ipa
-
-  release:
-    name: Release APK and IPA
-    needs: [build-android, build-ios]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Android APK
-        uses: actions/download-artifact@v3
-        with:
-          name: android-apk
-      - name: Download iOS IPA
-        uses: actions/download-artifact@v3
-        with:
-          name: ios-ipa
+      # Push to GitHub Releases
       - name: Push to Releases
         uses: ncipollo/release-action@v1
         with:
-          artifacts: |
-            build/app/outputs/apk/release/*.apk,
-            build/ios/iphoneos/app.ipa
+          artifacts: "build/app/outputs/apk/release/*.apk"
           tag: v1.0.${{ github.run_number }}
           token: ${{ secrets.TOKEN }}
